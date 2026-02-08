@@ -53,7 +53,9 @@ def _search_payload(query: str, param: SearchParam, extra_filter: Optional[Dict[
     ef_part = {"ef": param.ef} if param.ef is not None else {}
     alpha_part = {"alpha": param.alpha} if param.alpha is not None else {}
     if param.filter and extra_filter:
-        filter_part = {"filter": {"$and": [param.filter, extra_filter]}}
+        # Backend may not support logical operators like "$and", so merge flat filters.
+        # Query-level filter wins on key conflicts.
+        filter_part = {"filter": {**param.filter, **extra_filter}}
     elif param.filter:
         filter_part = {"filter": param.filter}
     elif extra_filter:
@@ -105,6 +107,7 @@ class ScenarioRunner:
 
         logger.info("waiting for ingestion job %s", job_id)
         waiter.wait_ready(job_id)
+        self._wait_search_ready(queries)
 
         runs = [self._run_param(param, queries) for param in cfg.search_params]
 
@@ -117,6 +120,21 @@ class ScenarioRunner:
             },
             "runs": runs,
         }
+
+    def _wait_search_ready(self, queries: List[Query]) -> None:
+        if not queries:
+            return
+        warmup_payload = {"text": queries[0].query, "k": 1}
+        deadline = self.now() + 60.0
+        while True:
+            try:
+                self.search_gateway.search(warmup_payload)
+                return
+            except Exception as exc:
+                if self.now() >= deadline:
+                    raise RuntimeError("search backend is not ready after warm-up retries") from exc
+                logger.warning("search warm-up retry after failure: %s", exc)
+                self.sleep(1.0)
 
     def _run_param(self, param: SearchParam, queries: List[Query]) -> Dict[str, Any]:
         logger.info("running search param set: %s", param.name)

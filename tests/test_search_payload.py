@@ -32,7 +32,17 @@ def test_search_payload_both_filters():
     assert result == {
         "text": "hello",
         "k": 10,
-        "filter": {"$and": [{"category": "tech"}, {"status": "active"}]},
+        "filter": {"category": "tech", "status": "active"},
+    }
+
+
+def test_search_payload_both_filters_query_wins_on_conflict():
+    param = SearchParam(name="p", k=10, filter={"category": "food", "lang": "en"})
+    result = _search_payload("hello", param, {"category": "tech"})
+    assert result == {
+        "text": "hello",
+        "k": 10,
+        "filter": {"category": "tech", "lang": "en"},
     }
 
 

@@ -6,6 +6,9 @@ services:
     environment:
       MUSUBI_EMBED_HOST: "0.0.0.0"
       MUSUBI_EMBED_PORT: "8081"
+      MUSUBI_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+      OMP_NUM_THREADS: "1"
+    restart: unless-stopped
     ports:
       - "8081:8081"
 
@@ -16,6 +19,7 @@ services:
     environment:
       MUSUBI_ADDR: "0.0.0.0:8080"
       MUSUBI_EMBED_URL: "http://musubi-embed:8081/embed"
+    restart: unless-stopped
     ports:
       - "8080:8080"
     depends_on:
