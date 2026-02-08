@@ -1,0 +1,22 @@
+services:
+  musubi-embed:
+    image: ghcr.io/fffclaypool/musubi:latest
+    platform: linux/amd64
+    command: ["uv", "run", "python/embedding_server.py"]
+    environment:
+      MUSUBI_EMBED_HOST: "0.0.0.0"
+      MUSUBI_EMBED_PORT: "8081"
+    ports:
+      - "8081:8081"
+
+  musubi-api:
+    image: ghcr.io/fffclaypool/musubi:latest
+    platform: linux/amd64
+    command: ["./target/release/musubi"]
+    environment:
+      MUSUBI_ADDR: "0.0.0.0:8080"
+      MUSUBI_EMBED_URL: "http://musubi-embed:8081/embed"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - musubi-embed

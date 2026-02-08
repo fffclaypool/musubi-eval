@@ -1,0 +1,3 @@
+{"id": "q1", "query": "Where is the Eiffel Tower?", "positive_ids": ["d3"]}
+{"id": "q2", "query": "What language emphasizes memory safety for systems programming?", "positive_ids": ["d4"], "filter": {"category": "tech"}}
+{"id": "q3", "query": "Which fruit is high in potassium?", "positive_ids": ["d2"], "filter": {"category": "food"}}
