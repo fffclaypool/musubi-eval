@@ -1,7 +1,6 @@
 import json
 import logging
 import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -15,22 +14,19 @@ logger = logging.getLogger(__name__)
 def _per_query_dataframe(results: Dict[str, Any]) -> pd.DataFrame:
     rows = []
     for run in results.get("runs", []):
-        run_name = run.get("name", "run")
         params = run.get("params", {})
         for item in run.get("per_query", []):
-            rows.append(
-                {
-                    "run_name": run_name,
-                    "query_id": item.get("query_id"),
-                    "latency_ms": item.get("latency_ms"),
-                    "recall_at_k": item.get("recall_at_k"),
-                    "mrr": item.get("mrr"),
-                    "ndcg_at_k": item.get("ndcg_at_k"),
-                    "k": params.get("k"),
-                    "ef": params.get("ef"),
-                    "alpha": params.get("alpha"),
-                }
-            )
+            rows.append({
+                "run_name": run.get("name", "run"),
+                "query_id": item.get("query_id"),
+                "latency_ms": item.get("latency_ms"),
+                "recall_at_k": item.get("recall_at_k"),
+                "mrr": item.get("mrr"),
+                "ndcg_at_k": item.get("ndcg_at_k"),
+                "k": params.get("k"),
+                "ef": params.get("ef"),
+                "alpha": params.get("alpha"),
+            })
     return pd.DataFrame(rows)
 
 
@@ -38,19 +34,18 @@ def generate_evidently_report(
     results: Dict[str, Any], cfg: EvidentlyConfig, output_dir: Path
 ) -> Dict[str, str]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    outputs: Dict[str, str] = {}
 
     df = _per_query_dataframe(results)
     if df.empty:
         logger.warning("evidently: no per-query data to report")
-        return outputs
+        return {}
 
     try:
         from evidently import DataDefinition, Dataset, Report
         from evidently.metrics import ColumnCount, MeanValue, RowCount
     except Exception as exc:  # pragma: no cover - optional dependency
         logger.warning("evidently: failed to import (%s)", exc)
-        return outputs
+        return {}
 
     definition = DataDefinition(
         numerical_columns=["latency_ms", "recall_at_k", "mrr", "ndcg_at_k", "k", "ef", "alpha"],
@@ -72,27 +67,37 @@ def generate_evidently_report(
     eval_result = report.run(dataset, None)
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    if cfg.save_html:
-        html_path = output_dir / f"evidently_{timestamp}.html"
-        if hasattr(eval_result, "save_html"):
-            eval_result.save_html(str(html_path))
-            outputs["evidently_html"] = str(html_path)
-        else:
-            logger.warning("evidently: save_html not available, skipping HTML output")
-    if cfg.save_json:
-        json_path = output_dir / f"evidently_{timestamp}.json"
-        if hasattr(eval_result, "save_json"):
-            eval_result.save_json(str(json_path))
-            outputs["evidently_json"] = str(json_path)
-        else:
-            payload = eval_result.json()
-            if isinstance(payload, str):
-                json_path.write_text(payload)
-            else:
-                json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2))
-            outputs["evidently_json"] = str(json_path)
+    html_output = _save_evidently_html(cfg, eval_result, output_dir, timestamp)
+    json_output = _save_evidently_json(cfg, eval_result, output_dir, timestamp)
+    return {**html_output, **json_output}
 
-    return outputs
+
+def _save_evidently_html(
+    cfg: EvidentlyConfig, eval_result: Any, output_dir: Path, timestamp: str
+) -> Dict[str, str]:
+    if not cfg.save_html:
+        return {}
+    html_path = output_dir / f"evidently_{timestamp}.html"
+    if hasattr(eval_result, "save_html"):
+        eval_result.save_html(str(html_path))
+        return {"evidently_html": str(html_path)}
+    logger.warning("evidently: save_html not available, skipping HTML output")
+    return {}
+
+
+def _save_evidently_json(
+    cfg: EvidentlyConfig, eval_result: Any, output_dir: Path, timestamp: str
+) -> Dict[str, str]:
+    if not cfg.save_json:
+        return {}
+    json_path = output_dir / f"evidently_{timestamp}.json"
+    if hasattr(eval_result, "save_json"):
+        eval_result.save_json(str(json_path))
+        return {"evidently_json": str(json_path)}
+    payload = eval_result.json()
+    json_payload = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, indent=2)
+    json_path.write_text(json_payload)
+    return {"evidently_json": str(json_path)}
 
 
 def log_mlflow(
@@ -115,13 +120,13 @@ def log_mlflow(
         mlflow.set_experiment(cfg.experiment_name)
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    artifacts = artifacts or {}
+    artifacts_dict = artifacts if artifacts is not None else {}
 
     for run in results.get("runs", []):
         run_name = f"{cfg.run_name_prefix}-{run.get('name','run')}-{timestamp}"
         with mlflow.start_run(run_name=run_name):
             params = run.get("params", {})
-            params_payload = {
+            base_params = {
                 "base_url": scenario.base_url,
                 "documents": scenario.documents_path,
                 "queries": scenario.queries_path,
@@ -130,8 +135,11 @@ def log_mlflow(
                 "ef": params.get("ef"),
                 "alpha": params.get("alpha"),
             }
-            if params.get("filter") is not None:
-                params_payload["filter"] = json.dumps(params.get("filter"), ensure_ascii=False)
+            filter_value = params.get("filter")
+            filter_param = (
+                {"filter": json.dumps(filter_value, ensure_ascii=False)} if filter_value is not None else {}
+            )
+            params_payload = {**base_params, **filter_param}
             mlflow.log_params({k: v for k, v in params_payload.items() if v is not None})
 
             metrics = run.get("metrics", {})
@@ -147,7 +155,7 @@ def log_mlflow(
                 }
             )
 
-            for name, path in artifacts.items():
+            for name, path in artifacts_dict.items():
                 try:
                     mlflow.log_artifact(path, artifact_path=name)
                 except Exception as exc:

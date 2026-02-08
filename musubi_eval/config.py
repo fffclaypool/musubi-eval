@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from musubi_eval.domain.models import SearchParam
+
 
 @dataclass
 class RetryConfig:
@@ -43,15 +45,6 @@ class MlflowConfig:
 
 
 @dataclass
-class SearchParam:
-    name: str
-    k: int
-    ef: Optional[int] = None
-    alpha: Optional[float] = None
-    filter: Optional[Dict[str, Any]] = None
-
-
-@dataclass
 class ScenarioConfig:
     base_url: str
     documents_path: str
@@ -72,48 +65,48 @@ def _require_key(d: Dict[str, Any], key: str) -> Any:
     return d[key]
 
 
+def _build_search_param(item: Dict[str, Any], index: int) -> SearchParam:
+    name = item.get("name") or f"param_{index}"
+    k_value = _require_key(item, "k")
+    return SearchParam(
+        name=name,
+        k=int(k_value),
+        ef=item.get("ef"),
+        alpha=item.get("alpha"),
+        filter=item.get("filter"),
+    )
+
+
 def load_scenario(path: str) -> ScenarioConfig:
-    raw = yaml.safe_load(Path(path).read_text()) or {}
+    raw_config = yaml.safe_load(Path(path).read_text()) or {}
 
-    base_url = _require_key(raw, "base_url")
+    base_url = _require_key(raw_config, "base_url")
 
-    datasets = _require_key(raw, "datasets")
+    datasets = _require_key(raw_config, "datasets")
     documents_path = _require_key(datasets, "documents")
     queries_path = _require_key(datasets, "queries")
 
-    search = _require_key(raw, "search")
+    search = _require_key(raw_config, "search")
     params_raw = _require_key(search, "params")
     if not isinstance(params_raw, list) or not params_raw:
         raise ValueError("search.params must be a non-empty list")
 
-    search_params: List[SearchParam] = []
-    for i, p in enumerate(params_raw, start=1):
-        name = p.get("name") or f"param_{i}"
-        k = _require_key(p, "k")
-        search_params.append(
-            SearchParam(
-                name=name,
-                k=int(k),
-                ef=p.get("ef"),
-                alpha=p.get("alpha"),
-                filter=p.get("filter"),
-            )
-        )
+    search_params = [_build_search_param(item, idx) for idx, item in enumerate(params_raw, start=1)]
 
-    retry_raw = raw.get("retry", {})
+    retry_raw = raw_config.get("retry", {})
     retry = RetryConfig(
         max_attempts=int(retry_raw.get("max_attempts", 3)),
         base_backoff_sec=float(retry_raw.get("base_backoff_sec", 0.5)),
         max_backoff_sec=float(retry_raw.get("max_backoff_sec", 5.0)),
     )
 
-    ingestion_raw = raw.get("ingestion", {})
+    ingestion_raw = raw_config.get("ingestion", {})
     ingestion = IngestionConfig(
         poll_interval_sec=float(ingestion_raw.get("poll_interval_sec", 1.0)),
         timeout_sec=float(ingestion_raw.get("timeout_sec", 600.0)),
     )
 
-    output_raw = raw.get("output", {})
+    output_raw = raw_config.get("output", {})
     output = OutputConfig(
         dir=str(output_raw.get("dir", "outputs")),
         save_json=bool(output_raw.get("save_json", True)),
@@ -121,7 +114,7 @@ def load_scenario(path: str) -> ScenarioConfig:
         save_prefix=str(output_raw.get("save_prefix", "run")),
     )
 
-    evidently_raw = raw.get("evidently", {})
+    evidently_raw = raw_config.get("evidently", {})
     evidently = EvidentlyConfig(
         enabled=bool(evidently_raw.get("enabled", False)),
         output_dir=str(evidently_raw.get("output_dir", "outputs/evidently")),
@@ -129,7 +122,7 @@ def load_scenario(path: str) -> ScenarioConfig:
         save_json=bool(evidently_raw.get("save_json", True)),
     )
 
-    mlflow_raw = raw.get("mlflow", {})
+    mlflow_raw = raw_config.get("mlflow", {})
     mlflow = MlflowConfig(
         enabled=bool(mlflow_raw.get("enabled", False)),
         tracking_uri=mlflow_raw.get("tracking_uri"),
@@ -142,11 +135,11 @@ def load_scenario(path: str) -> ScenarioConfig:
         documents_path=str(documents_path),
         queries_path=str(queries_path),
         search_params=search_params,
-        timeout_sec=float(raw.get("timeout_sec", 30.0)),
+        timeout_sec=float(raw_config.get("timeout_sec", 30.0)),
         retry=retry,
         ingestion=ingestion,
         output=output,
         evidently=evidently,
         mlflow=mlflow,
-        log_level=str(raw.get("log_level", "INFO")),
+        log_level=str(raw_config.get("log_level", "INFO")),
     )

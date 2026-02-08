@@ -8,14 +8,15 @@ Rust側の `musubi` を評価するための Python 評価基盤（ローカル�
 - 指標: Recall@k / MRR / nDCG / latency(p50/p95)
 
 ## ディレクトリ構成
-- `musubi_eval/`: 評価ロジック
-  - `client.py`: API クライアント（リトライ/タイムアウト）
-  - `dataset.py`: JSONL データ読み込み
-  - `metrics.py`: 指標計算
-  - `pipeline.py`: 評価パイプライン
-  - `cli.py`: CLI エントリ
+- `musubi_eval/domain/`: ドメインモデルと指標計算
+- `musubi_eval/application/`: ユースケースとポート定義
+- `musubi_eval/infrastructure/`: HTTP/ファイル/外部ツールのアダプタ
+- `musubi_eval/cli.py`: CLI エントリ
+- `musubi_eval/dataset.py`: JSONL データ読み込み（インフラ）
+- `musubi_eval/reporting.py`: Evidently/MLflow レポート（インフラ）
 - `examples/`: 例シナリオとサンプルデータ
 - `outputs/`: 結果出力先
+- `tests/`: テスト
 
 ## シナリオ YAML スキーマ（MVP）
 ```yaml
@@ -84,6 +85,11 @@ uv run -m musubi_eval.cli run -c examples/scenario.yaml
 ## uv セットアップ例
 ```bash
 uv sync
+```
+
+## テスト
+```bash
+uv run pytest
 ```
 
 ## ダッシュボード（Evidently / MLflow）

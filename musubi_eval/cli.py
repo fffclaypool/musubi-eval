@@ -2,8 +2,11 @@ import argparse
 import logging
 from pathlib import Path
 
+from .application.run_scenario import ScenarioRunner
 from .config import load_scenario
-from .pipeline import run_scenario, save_results
+from .infrastructure.dataset_jsonl import JsonlDatasetReader
+from .infrastructure.musubi_http import MusubiHttpClient
+from .infrastructure.results_filesystem import save_results
 from .reporting import generate_evidently_report, log_mlflow
 from .util import setup_logging
 
@@ -23,7 +26,11 @@ def main() -> None:
         cfg = load_scenario(args.config)
         setup_logging(cfg.log_level)
         logger.info("starting scenario: %s", args.config)
-        results = run_scenario(cfg)
+        runner = ScenarioRunner(
+            dataset_reader=JsonlDatasetReader(),
+            search_gateway=MusubiHttpClient(cfg.base_url, cfg.timeout_sec, cfg.retry),
+        )
+        results = runner.run(cfg)
         outputs = save_results(cfg, results)
         report_outputs = {}
         if cfg.evidently.enabled:
