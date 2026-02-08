@@ -9,6 +9,14 @@ services:
       MUSUBI_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
       OMP_NUM_THREADS: "1"
     restart: unless-stopped
+    volumes:
+      - musubi_embed_cache:/root/.cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 5s
     ports:
       - "8081:8081"
 
@@ -20,7 +28,17 @@ services:
       MUSUBI_ADDR: "0.0.0.0:8080"
       MUSUBI_EMBED_URL: "http://musubi-embed:8081/embed"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
     ports:
       - "8080:8080"
     depends_on:
-      - musubi-embed
+      musubi-embed:
+        condition: service_healthy
+
+volumes:
+  musubi_embed_cache:
