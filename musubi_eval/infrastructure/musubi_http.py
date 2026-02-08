@@ -29,7 +29,14 @@ class MusubiHttpClient:
                 if 400 <= resp.status_code < 500:
                     resp.raise_for_status()
                 if resp.status_code >= 500:
-                    raise requests.HTTPError(f"server error: {resp.status_code}", response=resp)
+                    body = (resp.text or "").strip()
+                    body_preview = body[:300]
+                    message = (
+                        f"server error: {resp.status_code}"
+                        if not body_preview
+                        else f"server error: {resp.status_code} body={body_preview}"
+                    )
+                    raise requests.HTTPError(message, response=resp)
                 if resp.headers.get("content-type", "").startswith("application/json"):
                     return resp.json()
                 return {"text": resp.text}

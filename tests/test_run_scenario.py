@@ -63,6 +63,21 @@ class FakeGateway:
         return self.results_by_text.get(text, [])
 
 
+class FlakyWarmupGateway(FakeGateway):
+    def __init__(self, results_by_text, fail_count: int):
+        super().__init__(results_by_text)
+        self.fail_count = fail_count
+
+    def search(self, payload):
+        self.calls.append("search")
+        self.last_search_payloads.append(payload)
+        if self.fail_count > 0:
+            self.fail_count -= 1
+            raise RuntimeError("embed warming up")
+        text = payload.get("text")
+        return self.results_by_text.get(text, [])
+
+
 def test_run_scenario():
     documents = [
         Document(id="d1", text="alpha", metadata={"category": "tech"}),
@@ -102,9 +117,34 @@ def test_run_scenario():
     assert "text" in gateway.last_search_payloads[0]
     assert "query" not in gateway.last_search_payloads[0]
 
-    assert any("$and" in (p.get("filter") or {}) for p in gateway.last_search_payloads)
+    assert all("$and" not in (p.get("filter") or {}) for p in gateway.last_search_payloads)
 
     for run in results["runs"]:
         assert run["metrics"]["recall_at_k"] == 1.0
         assert run["metrics"]["mrr"] == 1.0
         assert run["metrics"]["ndcg_at_k"] == 1.0
+
+
+def test_run_scenario_warmup_retry():
+    documents = [Document(id="d1", text="alpha")]
+    queries = [Query(id="q1", query="alpha", positive_ids=["d1"])]
+    results_by_text = {"alpha": ["d1"]}
+    reader = FakeDatasetReader(documents, queries)
+    gateway = FlakyWarmupGateway(results_by_text, fail_count=2)
+    clock = DummyClock()
+    cfg = ScenarioConfig(
+        base_url="http://example",
+        documents_path="docs.jsonl",
+        queries_path="queries.jsonl",
+        search_params=[SearchParam(name="k1", k=1)],
+    )
+    runner = ScenarioRunner(
+        dataset_reader=reader,
+        search_gateway=gateway,
+        now=clock.now,
+        perf_counter=clock.perf,
+        sleep=clock.sleep,
+    )
+    results = runner.run(cfg)
+    assert len(results["runs"]) == 1
+    assert results["runs"][0]["metrics"]["recall_at_k"] == 1.0
