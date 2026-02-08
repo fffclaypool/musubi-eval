@@ -82,6 +82,20 @@ uv sync
 uv run -m musubi_eval.cli run -c examples/scenario.yaml
 ```
 
+## 実行スクリプト
+`docker compose` の起動・ヘルスチェック待機・評価実行をまとめて行うスクリプトです。
+
+```bash
+# 初回やクリーン起動
+./scripts/run_eval.sh
+
+# 既存コンテナを使って高速実行
+./scripts/run_eval.sh --reuse
+
+# シナリオ切り替え
+./scripts/run_eval.sh --reuse -c examples/scenario.yaml
+```
+
 ## uv セットアップ例
 ```bash
 uv sync
