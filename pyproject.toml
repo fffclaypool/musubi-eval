@@ -11,7 +11,27 @@ dependencies = [
   "mlflow>=2.12.0,<3.0.0",
   "requests==2.32.3",
   "PyYAML==6.0.2",
+  "ruff>=0.6.0,<1.0.0",
 ]
 
 [project.scripts]
 musubi-eval = "musubi_eval.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [
+  ".git",
+  ".venv",
+  "outputs",
+  "mlruns",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

@@ -8,10 +8,12 @@ from musubi_eval.dataset import load_documents, load_queries
 def test_load_documents(tmp_path):
     p = tmp_path / "docs.jsonl"
     p.write_text(
-        "\n".join([
-            json.dumps({"id": "d1", "text": "hello"}),
-            json.dumps({"id": "d2", "text": "world", "metadata": {"k": "v"}}),
-        ])
+        "\n".join(
+            [
+                json.dumps({"id": "d1", "text": "hello"}),
+                json.dumps({"id": "d2", "text": "world", "metadata": {"k": "v"}}),
+            ]
+        )
     )
     docs = load_documents(str(p))
     assert len(docs) == 2
@@ -38,9 +40,7 @@ def test_load_documents_invalid_json(tmp_path):
 
 def test_load_documents_blank_lines(tmp_path):
     p = tmp_path / "docs.jsonl"
-    p.write_text(
-        "\n" + json.dumps({"id": "d1", "text": "a"}) + "\n\n"
-    )
+    p.write_text("\n" + json.dumps({"id": "d1", "text": "a"}) + "\n\n")
     docs = load_documents(str(p))
     assert len(docs) == 1
 
@@ -48,10 +48,14 @@ def test_load_documents_blank_lines(tmp_path):
 def test_load_queries(tmp_path):
     p = tmp_path / "queries.jsonl"
     p.write_text(
-        "\n".join([
-            json.dumps({"id": "q1", "query": "hello", "positive_ids": ["d1"]}),
-            json.dumps({"id": "q2", "query": "world", "positive_ids": ["d2"], "filter": {"k": "v"}}),
-        ])
+        "\n".join(
+            [
+                json.dumps({"id": "q1", "query": "hello", "positive_ids": ["d1"]}),
+                json.dumps(
+                    {"id": "q2", "query": "world", "positive_ids": ["d2"], "filter": {"k": "v"}}
+                ),
+            ]
+        )
     )
     queries = load_queries(str(p))
     assert len(queries) == 2

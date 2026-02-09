@@ -16,17 +16,19 @@ def _per_query_dataframe(results: Dict[str, Any]) -> pd.DataFrame:
     for run in results.get("runs", []):
         params = run.get("params", {})
         for item in run.get("per_query", []):
-            rows.append({
-                "run_name": run.get("name", "run"),
-                "query_id": item.get("query_id"),
-                "latency_ms": item.get("latency_ms"),
-                "recall_at_k": item.get("recall_at_k"),
-                "mrr": item.get("mrr"),
-                "ndcg_at_k": item.get("ndcg_at_k"),
-                "k": params.get("k"),
-                "ef": params.get("ef"),
-                "alpha": params.get("alpha"),
-            })
+            rows.append(
+                {
+                    "run_name": run.get("name", "run"),
+                    "query_id": item.get("query_id"),
+                    "latency_ms": item.get("latency_ms"),
+                    "recall_at_k": item.get("recall_at_k"),
+                    "mrr": item.get("mrr"),
+                    "ndcg_at_k": item.get("ndcg_at_k"),
+                    "k": params.get("k"),
+                    "ef": params.get("ef"),
+                    "alpha": params.get("alpha"),
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -156,7 +158,9 @@ def _save_evidently_json(
         eval_result.save_json(str(json_path))
         return {"evidently_json": str(json_path)}
     payload = eval_result.json()
-    json_payload = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, indent=2)
+    json_payload = (
+        payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, indent=2)
+    )
     json_path.write_text(json_payload)
     return {"evidently_json": str(json_path)}
 
@@ -184,7 +188,7 @@ def log_mlflow(
     artifacts_dict = artifacts if artifacts is not None else {}
 
     for run in results.get("runs", []):
-        run_name = f"{cfg.run_name_prefix}-{run.get('name','run')}-{timestamp}"
+        run_name = f"{cfg.run_name_prefix}-{run.get('name', 'run')}-{timestamp}"
         with mlflow.start_run(run_name=run_name):
             params = run.get("params", {})
             base_params = {
@@ -198,7 +202,9 @@ def log_mlflow(
             }
             filter_value = params.get("filter")
             filter_param = (
-                {"filter": json.dumps(filter_value, ensure_ascii=False)} if filter_value is not None else {}
+                {"filter": json.dumps(filter_value, ensure_ascii=False)}
+                if filter_value is not None
+                else {}
             )
             params_payload = {**base_params, **filter_param}
             mlflow.log_params({k: v for k, v in params_payload.items() if v is not None})

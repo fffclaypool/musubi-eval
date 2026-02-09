@@ -16,7 +16,9 @@ class MusubiHttpClient:
         self.retry = retry
         self.session = requests.Session()
 
-    def _request(self, method: str, path: str, json_body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _request(
+        self, method: str, path: str, json_body: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
         for attempt in range(1, self.retry.max_attempts + 1):
             try:

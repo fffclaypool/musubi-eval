@@ -90,13 +90,17 @@ def test_load_scenario_missing_datasets(tmp_path):
 
 def test_load_scenario_empty_params(tmp_path):
     p = tmp_path / "scenario.yaml"
-    p.write_text("base_url: http://x\ndatasets:\n  documents: d\n  queries: q\nsearch:\n  params: []\n")
+    p.write_text(
+        "base_url: http://x\ndatasets:\n  documents: d\n  queries: q\nsearch:\n  params: []\n"
+    )
     with pytest.raises(ValueError, match="non-empty list"):
         load_scenario(str(p))
 
 
 def test_load_scenario_missing_k(tmp_path):
     p = tmp_path / "scenario.yaml"
-    p.write_text("base_url: http://x\ndatasets:\n  documents: d\n  queries: q\nsearch:\n  params:\n    - name: bad\n")
+    p.write_text(
+        "base_url: http://x\ndatasets:\n  documents: d\n  queries: q\nsearch:\n  params:\n    - name: bad\n"
+    )
     with pytest.raises(ValueError, match="missing required key: k"):
         load_scenario(str(p))

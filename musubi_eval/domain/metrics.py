@@ -25,9 +25,7 @@ def ndcg_at_k(relevant: Sequence[str], ranked: Sequence[str], k: int) -> float:
         return 0.0
     rel = set(relevant)
     dcg = sum(
-        1.0 / math.log2(i + 1)
-        for i, doc_id in enumerate(ranked[:k], start=1)
-        if doc_id in rel
+        1.0 / math.log2(i + 1) for i, doc_id in enumerate(ranked[:k], start=1) if doc_id in rel
     )
     ideal_hits = min(k, len(rel))
     idcg = sum(1.0 / math.log2(i + 1) for i in range(1, ideal_hits + 1))

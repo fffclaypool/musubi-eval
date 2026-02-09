@@ -96,6 +96,26 @@ uv run -m musubi_eval.cli run -c examples/scenario.yaml
 ./scripts/run_eval.sh --reuse -c examples/scenario.yaml
 ```
 
+## Makefile
+よく使う操作は `make` で実行できます。
+
+```bash
+# ターゲット一覧
+make help
+
+# フル実行（コンテナ再起動あり）
+make run
+
+# 高速実行（既存コンテナ再利用）
+make run-reuse
+
+# lint / format / test
+make lint
+make format
+make test
+make check
+```
+
 ## uv セットアップ例
 ```bash
 uv sync
@@ -104,6 +124,18 @@ uv sync
 ## テスト
 ```bash
 uv run pytest
+```
+
+## Lint / Format (Ruff)
+```bash
+# lint
+uv run ruff check .
+
+# lintを自動修正
+uv run ruff check . --fix
+
+# format
+uv run ruff format .
 ```
 
 ## ダッシュボード（Evidently / MLflow）
