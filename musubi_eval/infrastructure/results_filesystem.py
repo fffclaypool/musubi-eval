@@ -29,7 +29,15 @@ def _save_csv(cfg: Any, results: Dict[str, Any], out_dir: Path, timestamp: str) 
     if not cfg.output.save_csv:
         return {}
     csv_path = out_dir / f"{cfg.output.save_prefix}_{timestamp}.csv"
-    fieldnames = ["name", "recall_at_k", "mrr", "ndcg_at_k", "latency_mean_ms", "latency_p50_ms", "latency_p95_ms"]
+    fieldnames = [
+        "name",
+        "recall_at_k",
+        "mrr",
+        "ndcg_at_k",
+        "latency_mean_ms",
+        "latency_p50_ms",
+        "latency_p95_ms",
+    ]
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=fieldnames)
     writer.writeheader()

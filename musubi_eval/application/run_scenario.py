@@ -48,7 +48,9 @@ def _build_documents_payload(documents: List[Document]) -> List[Dict[str, Any]]:
     ]
 
 
-def _search_payload(query: str, param: SearchParam, extra_filter: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _search_payload(
+    query: str, param: SearchParam, extra_filter: Optional[Dict[str, Any]]
+) -> Dict[str, Any]:
     base = {"text": query, "k": param.k}
     ef_part = {"ef": param.ef} if param.ef is not None else {}
     alpha_part = {"alpha": param.alpha} if param.alpha is not None else {}

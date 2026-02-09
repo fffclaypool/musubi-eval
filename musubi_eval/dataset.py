@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 from musubi_eval.domain.models import Document, Query
+
 
 def _read_jsonl(path: str) -> Iterable[Dict[str, Any]]:
     for line in Path(path).read_text().splitlines():
