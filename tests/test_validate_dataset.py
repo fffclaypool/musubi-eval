@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from scripts.validate_dataset import (
     check_duplicate_ids,
     check_positive_ids_reference,
@@ -115,3 +117,9 @@ class TestValidate:
         assert errors == []
         assert stats["documents_count"] == 0
         assert stats["queries_count"] == 0
+
+    def test_invalid_json(self, tmp_path):
+        (tmp_path / "documents.jsonl").write_text("not valid json\n")
+        (tmp_path / "queries.jsonl").write_text("{}\n")
+        with pytest.raises(ValueError, match="invalid JSON"):
+            validate(str(tmp_path))

@@ -101,6 +101,34 @@ class TestParseNqExample:
         raw = _make_nq_example(annotation_start=-1, annotation_end=-1, candidate_index=-1)
         assert parse_nq_example(raw) is None
 
+    def test_fallback_to_second_annotation(self):
+        raw = _make_nq_example()
+        invalid_annotation = {
+            "long_answer": {"start_token": -1, "end_token": -1, "candidate_index": -1},
+            "short_answers": [],
+        }
+        valid_annotation = raw["annotations"][0]
+        raw["annotations"] = [invalid_annotation, valid_annotation]
+        result = parse_nq_example(raw)
+        assert result is not None
+        assert "Paris" in result[1]
+
+    def test_all_annotations_invalid(self):
+        raw = _make_nq_example()
+        invalid = {
+            "long_answer": {"start_token": -1, "end_token": -1, "candidate_index": -1},
+            "short_answers": [],
+        }
+        raw["annotations"] = [invalid, invalid]
+        assert parse_nq_example(raw) is None
+
+    def test_example_id_zero(self):
+        raw = _make_nq_example(example_id=0)
+        result = parse_nq_example(raw)
+        assert result is not None
+        _, _, page_id, _, _ = result
+        assert page_id == "0"
+
     def test_document_text_fallback(self):
         raw = {
             "question_text": "test question",

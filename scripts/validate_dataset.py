@@ -143,7 +143,12 @@ def main(argv: Optional[List[str]] = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    errors, stats = validate(args.dataset_dir)
+    try:
+        errors, stats = validate(args.dataset_dir)
+    except ValueError as exc:
+        print("\n=== Validation FAILED (1 errors) ===", file=sys.stderr)
+        print(f"  ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if stats:
         print("=== Dataset Statistics ===")

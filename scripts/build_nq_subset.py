@@ -69,13 +69,19 @@ def parse_nq_example(
     if not annotations:
         return None
 
-    annotation = annotations[0]
-    long_answer = annotation.get("long_answer", {})
-    start_token = long_answer.get("start_token", -1)
-    end_token = long_answer.get("end_token", -1)
-    candidate_index = long_answer.get("candidate_index", -1)
+    start_token = -1
+    end_token = -1
+    for annotation in annotations:
+        la = annotation.get("long_answer", {})
+        st = la.get("start_token", -1)
+        et = la.get("end_token", -1)
+        ci = la.get("candidate_index", -1)
+        if st >= 0 and et > st and ci >= 0:
+            start_token = st
+            end_token = et
+            break
 
-    if start_token < 0 or end_token <= start_token or candidate_index < 0:
+    if start_token < 0 or end_token <= start_token:
         return None
 
     tokens = raw.get("document_tokens")
@@ -92,8 +98,8 @@ def parse_nq_example(
 
     title = raw.get("document_title", "")
     url = raw.get("document_url", "")
-    example_id = raw.get("example_id", "")
-    page_id = str(example_id) if example_id else url or title
+    example_id = raw.get("example_id")
+    page_id = str(example_id) if example_id is not None else url or title
 
     return question, passage, page_id, title, url
 
