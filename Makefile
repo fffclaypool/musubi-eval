@@ -2,6 +2,8 @@ SHELL := /bin/bash
 
 SCENARIO ?= examples/scenario.yaml
 TUNING_CONFIG ?= examples/tuning.yaml
+NQ_INPUT_PATH ?= /path/to/nq-train.jsonl
+NQ_OUT_DIR ?= examples/data/nq_1000
 MLFLOW_BACKEND ?= ./mlruns
 MLFLOW_HOST ?= 127.0.0.1
 MLFLOW_PORT ?= 5000
@@ -16,6 +18,9 @@ help:
 	@echo "  run-reuse       - Run eval flow without restarting containers"
 	@echo "  run-scenario    - Run evaluator only (expects services up)"
 	@echo "  tune            - Run Optuna parameter tuning"
+	@echo "  nq-build        - Build NQ 1000 dataset from source"
+	@echo "  nq-validate     - Validate NQ 1000 dataset"
+	@echo "  nq-prepare      - Build + validate NQ 1000 dataset"
 	@echo "  test            - Run pytest"
 	@echo "  lint            - Run ruff check"
 	@echo "  lint-fix        - Run ruff check with auto-fix"
@@ -28,6 +33,7 @@ help:
 	@echo "  make run"
 	@echo "  make run-reuse SCENARIO=examples/scenario.yaml"
 	@echo "  make tune TUNING_CONFIG=examples/tuning.yaml"
+	@echo "  make nq-prepare NQ_INPUT_PATH=/path/to/nq-train.jsonl"
 	@echo "  make mlflow-ui MLFLOW_PORT=5001"
 
 .PHONY: sync
@@ -57,6 +63,17 @@ run-scenario:
 .PHONY: tune
 tune:
 	uv run -m musubi_eval.cli tune -c "$(TUNING_CONFIG)"
+
+.PHONY: nq-build
+nq-build:
+	uv run python scripts/build_nq_subset.py --input-path "$(NQ_INPUT_PATH)" --out-dir "$(NQ_OUT_DIR)"
+
+.PHONY: nq-validate
+nq-validate:
+	uv run python scripts/validate_dataset.py --dataset-dir "$(NQ_OUT_DIR)"
+
+.PHONY: nq-prepare
+nq-prepare: nq-build nq-validate
 
 .PHONY: test
 test:

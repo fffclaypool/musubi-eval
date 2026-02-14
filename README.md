@@ -138,6 +138,41 @@ uv run ruff check . --fix
 uv run ruff format .
 ```
 
+## Natural Questions (NQ) 1000件データセット
+NQ 由来の 1000 クエリ評価セットを生成・実行できます。
+
+### データ準備
+NQ の元データ（Google 提供 JSONL）が必要です。
+
+```bash
+# ビルド + バリデーション
+make nq-prepare NQ_INPUT_PATH=/path/to/nq-train.jsonl
+
+# 個別実行
+make nq-build NQ_INPUT_PATH=/path/to/nq-train.jsonl
+make nq-validate
+```
+
+オプション:
+- `NQ_OUT_DIR`: 出力先（default: `examples/data/nq_1000`）
+- `--num-queries`: 抽出数（default: `1000`）
+- `--seed`: ランダムシード（default: `42`）
+- `--max-passages-per-page`: ページあたり最大パッセージ数（default: `20`）
+
+### 評価実行
+```bash
+# シナリオ実行
+uv run -m musubi_eval.cli run -c examples/scenario_nq_1000.yaml
+
+# パラメータチューニング
+uv run -m musubi_eval.cli tune -c examples/tuning_nq_1000.yaml
+```
+
+### データバリデーション
+```bash
+uv run python scripts/validate_dataset.py --dataset-dir examples/data/nq_1000
+```
+
 ## Optuna パラメータチューニング
 Optuna を使って `k`, `ef`, `alpha` の最適な組み合わせを自動探索できます。
 

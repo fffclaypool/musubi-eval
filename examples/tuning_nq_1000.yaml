@@ -1,0 +1,41 @@
+base_scenario: "examples/scenario_nq_1000.yaml"
+log_level: "INFO"
+
+study:
+  name: "musubi-tuning-nq-1000"
+  direction: "maximize"
+  n_trials: 20
+  timeout_sec: 600
+  sampler_seed: 42
+
+search_space:
+  k:
+    low: 5
+    high: 50
+    step: 5
+  ef:
+    low: 50
+    high: 300
+    step: 50
+  alpha:
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+constraints:
+  max_latency_p95_ms: 500.0
+
+objective:
+  metric: "recall_at_k"
+  latency_penalty: 0.0001
+
+output:
+  dir: "outputs"
+  save_history_csv: true
+  save_history_json: true
+  save_best_yaml: true
+
+mlflow:
+  enabled: true
+  experiment_name: "musubi-tuning-nq-1000"
+  run_name_prefix: "nq-tuning"

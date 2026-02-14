@@ -1,0 +1,48 @@
+base_url: "http://musubi-api:8080"
+log_level: "INFO"
+timeout_sec: 30
+
+retry:
+  max_attempts: 3
+  base_backoff_sec: 0.5
+  max_backoff_sec: 5.0
+
+ingestion:
+  poll_interval_sec: 1.0
+  timeout_sec: 600
+
+datasets:
+  documents: "examples/data/nq_1000/documents.jsonl"
+  queries: "examples/data/nq_1000/queries.jsonl"
+
+search:
+  params:
+    - name: "k10_default"
+      k: 10
+      ef: 100
+      alpha: 0.5
+    - name: "k10_bm25"
+      k: 10
+      ef: 100
+      alpha: 1.0
+    - name: "k10_vector"
+      k: 10
+      ef: 100
+      alpha: 0.0
+
+output:
+  dir: "outputs"
+  save_json: true
+  save_csv: true
+  save_prefix: "run_nq_1000"
+
+evidently:
+  enabled: true
+  output_dir: "outputs/evidently"
+  save_html: true
+  save_json: true
+
+mlflow:
+  enabled: true
+  experiment_name: "musubi-eval-nq-1000"
+  run_name_prefix: "nq-1000"
