@@ -138,6 +138,71 @@ uv run ruff check . --fix
 uv run ruff format .
 ```
 
+## Optuna パラメータチューニング
+Optuna を使って `k`, `ef`, `alpha` の最適な組み合わせを自動探索できます。
+
+### tuning.yaml の例
+```yaml
+base_scenario: "examples/scenario.yaml"
+
+study:
+  name: "musubi-tuning"
+  direction: "maximize"
+  n_trials: 20
+  timeout_sec: 600
+  sampler_seed: 42
+
+search_space:
+  k:
+    low: 5
+    high: 50
+    step: 5
+  ef:
+    low: 50
+    high: 300
+    step: 50
+  alpha:
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+constraints:
+  max_latency_p95_ms: 500.0
+
+objective:
+  metric: "recall_at_k"
+  latency_penalty: 0.0001
+
+output:
+  dir: "outputs"
+  save_history_csv: true
+  save_history_json: true
+  save_best_yaml: true
+
+mlflow:
+  enabled: true
+  experiment_name: "musubi-tuning"
+  run_name_prefix: "musubi-tuning"
+```
+
+### 実行
+```bash
+# 基本実行
+make tune
+
+# 設定ファイルを指定
+make tune TUNING_CONFIG=examples/tuning.yaml
+
+# uv で直接実行
+uv run -m musubi_eval.cli tune -c examples/tuning.yaml
+```
+
+### 出力
+- `outputs/tuning_<timestamp>.json` — 全 trial の履歴
+- `outputs/tuning_<timestamp>.csv` — 履歴 CSV
+- `outputs/best_params_<timestamp>.yaml` — 推奨パラメータ
+- `outputs/best_scenario_<timestamp>.yaml` — best params を反映したシナリオ YAML
+
 ## ダッシュボード（Evidently / MLflow）
 ### 依存関係
 `evidently` と `mlflow` を使う場合は追加依存が必要です。

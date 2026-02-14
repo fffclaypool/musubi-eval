@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 
 SCENARIO ?= examples/scenario.yaml
+TUNING_CONFIG ?= examples/tuning.yaml
 MLFLOW_BACKEND ?= ./mlruns
 MLFLOW_HOST ?= 127.0.0.1
 MLFLOW_PORT ?= 5000
@@ -14,6 +15,7 @@ help:
 	@echo "  run             - Run full eval flow (restart containers)"
 	@echo "  run-reuse       - Run eval flow without restarting containers"
 	@echo "  run-scenario    - Run evaluator only (expects services up)"
+	@echo "  tune            - Run Optuna parameter tuning"
 	@echo "  test            - Run pytest"
 	@echo "  lint            - Run ruff check"
 	@echo "  lint-fix        - Run ruff check with auto-fix"
@@ -25,6 +27,7 @@ help:
 	@echo "Examples:"
 	@echo "  make run"
 	@echo "  make run-reuse SCENARIO=examples/scenario.yaml"
+	@echo "  make tune TUNING_CONFIG=examples/tuning.yaml"
 	@echo "  make mlflow-ui MLFLOW_PORT=5001"
 
 .PHONY: sync
@@ -50,6 +53,10 @@ run-reuse:
 .PHONY: run-scenario
 run-scenario:
 	uv run -m musubi_eval.cli run -c "$(SCENARIO)"
+
+.PHONY: tune
+tune:
+	uv run -m musubi_eval.cli tune -c "$(TUNING_CONFIG)"
 
 .PHONY: test
 test:

@@ -41,14 +41,14 @@ class IngestionWaiter:
             self.sleep(self.poll_interval_sec)
 
 
-def _build_documents_payload(documents: List[Document]) -> List[Dict[str, Any]]:
+def build_documents_payload(documents: List[Document]) -> List[Dict[str, Any]]:
     return [
         {"id": d.id, "text": d.text, **({"metadata": d.metadata} if d.metadata is not None else {})}
         for d in documents
     ]
 
 
-def _search_payload(
+def search_payload(
     query: str, param: SearchParam, extra_filter: Optional[Dict[str, Any]]
 ) -> Dict[str, Any]:
     base = {"text": query, "k": param.k}
@@ -86,6 +86,26 @@ class ScenarioRunner:
         documents = self.dataset_reader.load_documents(cfg.documents_path)
         queries = self.dataset_reader.load_queries(cfg.queries_path)
 
+        self.prepare_index(cfg, documents, queries)
+
+        runs = [self.run_single_param(param, queries) for param in cfg.search_params]
+
+        return {
+            "config": {
+                "base_url": cfg.base_url,
+                "documents": cfg.documents_path,
+                "queries": cfg.queries_path,
+                "search_params": [asdict(p) for p in cfg.search_params],
+            },
+            "runs": runs,
+        }
+
+    def prepare_index(
+        self,
+        cfg: ScenarioConfig,
+        documents: List[Document],
+        queries: List[Query],
+    ) -> None:
         waiter = IngestionWaiter(
             self.search_gateway,
             cfg.ingestion.poll_interval_sec,
@@ -98,7 +118,7 @@ class ScenarioRunner:
         self.search_gateway.health()
 
         logger.info("uploading %s documents", len(documents))
-        self.search_gateway.documents_batch(_build_documents_payload(documents))
+        self.search_gateway.documents_batch(build_documents_payload(documents))
 
         logger.info("starting ingestion")
         job = self.search_gateway.ingestion_start()
@@ -110,18 +130,6 @@ class ScenarioRunner:
         logger.info("waiting for ingestion job %s", job_id)
         waiter.wait_ready(job_id)
         self._wait_search_ready(queries)
-
-        runs = [self._run_param(param, queries) for param in cfg.search_params]
-
-        return {
-            "config": {
-                "base_url": cfg.base_url,
-                "documents": cfg.documents_path,
-                "queries": cfg.queries_path,
-                "search_params": [asdict(p) for p in cfg.search_params],
-            },
-            "runs": runs,
-        }
 
     def _wait_search_ready(self, queries: List[Query]) -> None:
         if not queries:
@@ -138,7 +146,7 @@ class ScenarioRunner:
                 logger.warning("search warm-up retry after failure: %s", exc)
                 self.sleep(1.0)
 
-    def _run_param(self, param: SearchParam, queries: List[Query]) -> Dict[str, Any]:
+    def run_single_param(self, param: SearchParam, queries: List[Query]) -> Dict[str, Any]:
         logger.info("running search param set: %s", param.name)
         per_query_items = [self._run_query(param, q) for q in queries]
         per_query = [item for item, _ in per_query_items]
@@ -163,7 +171,7 @@ class ScenarioRunner:
         }
 
     def _run_query(self, param: SearchParam, q: Query) -> tuple[Dict[str, Any], float]:
-        payload = _search_payload(q.query, param, q.filter)
+        payload = search_payload(q.query, param, q.filter)
         start_perf = self.perf_counter()
         ranked_ids = self.search_gateway.search(payload)
         latency_ms = (self.perf_counter() - start_perf) * 1000.0

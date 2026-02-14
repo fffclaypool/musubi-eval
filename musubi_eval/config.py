@@ -59,6 +59,67 @@ class ScenarioConfig:
     log_level: str = "INFO"
 
 
+@dataclass
+class IntRangeConfig:
+    low: int
+    high: int
+    step: int = 1
+
+
+@dataclass
+class FloatRangeConfig:
+    low: float
+    high: float
+    step: float = 0.1
+
+
+@dataclass
+class SearchSpaceConfig:
+    k: IntRangeConfig
+    ef: IntRangeConfig
+    alpha: FloatRangeConfig
+
+
+@dataclass
+class StudyConfig:
+    name: str = "musubi-tuning"
+    direction: str = "maximize"
+    n_trials: int = 20
+    timeout_sec: Optional[float] = None
+    sampler_seed: Optional[int] = None
+
+
+@dataclass
+class ConstraintsConfig:
+    max_latency_p95_ms: Optional[float] = None
+
+
+@dataclass
+class ObjectiveConfig:
+    metric: str = "recall_at_k"
+    latency_penalty: float = 0.0
+
+
+@dataclass
+class TuningOutputConfig:
+    dir: str = "outputs"
+    save_history_csv: bool = True
+    save_history_json: bool = True
+    save_best_yaml: bool = True
+
+
+@dataclass
+class TuningConfig:
+    base_scenario: str
+    search_space: SearchSpaceConfig
+    study: StudyConfig = field(default_factory=StudyConfig)
+    constraints: ConstraintsConfig = field(default_factory=ConstraintsConfig)
+    objective: ObjectiveConfig = field(default_factory=ObjectiveConfig)
+    output: TuningOutputConfig = field(default_factory=TuningOutputConfig)
+    mlflow: MlflowConfig = field(default_factory=MlflowConfig)
+    log_level: str = "INFO"
+
+
 def _require_key(d: Dict[str, Any], key: str) -> Any:
     if key not in d:
         raise ValueError(f"missing required key: {key}")
@@ -142,4 +203,93 @@ def load_scenario(path: str) -> ScenarioConfig:
         evidently=evidently,
         mlflow=mlflow,
         log_level=str(raw_config.get("log_level", "INFO")),
+    )
+
+
+def _build_int_range(raw: Dict[str, Any]) -> IntRangeConfig:
+    return IntRangeConfig(
+        low=int(_require_key(raw, "low")),
+        high=int(_require_key(raw, "high")),
+        step=int(raw.get("step", 1)),
+    )
+
+
+def _build_float_range(raw: Dict[str, Any]) -> FloatRangeConfig:
+    return FloatRangeConfig(
+        low=float(_require_key(raw, "low")),
+        high=float(_require_key(raw, "high")),
+        step=float(raw.get("step", 0.1)),
+    )
+
+
+def load_tuning_config(path: str) -> TuningConfig:
+    raw = yaml.safe_load(Path(path).read_text()) or {}
+
+    base_scenario = _require_key(raw, "base_scenario")
+
+    space_raw = _require_key(raw, "search_space")
+    search_space = SearchSpaceConfig(
+        k=_build_int_range(_require_key(space_raw, "k")),
+        ef=_build_int_range(_require_key(space_raw, "ef")),
+        alpha=_build_float_range(_require_key(space_raw, "alpha")),
+    )
+
+    study_raw = raw.get("study", {})
+    direction = str(study_raw.get("direction", "maximize"))
+    if direction not in ("maximize", "minimize"):
+        raise ValueError(f"study.direction must be 'maximize' or 'minimize', got '{direction}'")
+    study = StudyConfig(
+        name=str(study_raw.get("name", "musubi-tuning")),
+        direction=direction,
+        n_trials=int(study_raw.get("n_trials", 20)),
+        timeout_sec=float(study_raw["timeout_sec"]) if "timeout_sec" in study_raw else None,
+        sampler_seed=int(study_raw["sampler_seed"]) if "sampler_seed" in study_raw else None,
+    )
+
+    constraints_raw = raw.get("constraints", {})
+    constraints = ConstraintsConfig(
+        max_latency_p95_ms=(
+            float(constraints_raw["max_latency_p95_ms"])
+            if "max_latency_p95_ms" in constraints_raw
+            else None
+        ),
+    )
+
+    obj_raw = raw.get("objective", {})
+    metric = str(obj_raw.get("metric", "recall_at_k"))
+    supported_metrics = {"recall_at_k", "mrr", "ndcg_at_k"}
+    if metric not in supported_metrics:
+        raise ValueError(
+            f"objective.metric must be one of {sorted(supported_metrics)}, got '{metric}'"
+        )
+    objective = ObjectiveConfig(
+        metric=metric,
+        latency_penalty=float(obj_raw.get("latency_penalty", 0.0)),
+    )
+
+    out_raw = raw.get("output", {})
+    output = TuningOutputConfig(
+        dir=str(out_raw.get("dir", "outputs")),
+        save_history_csv=bool(out_raw.get("save_history_csv", True)),
+        save_history_json=bool(out_raw.get("save_history_json", True)),
+        save_best_yaml=bool(out_raw.get("save_best_yaml", True)),
+    )
+
+    mlflow_raw = raw.get("mlflow", {})
+    mlflow = MlflowConfig(
+        enabled=bool(mlflow_raw.get("enabled", False)),
+        tracking_uri=mlflow_raw.get("tracking_uri"),
+        experiment_name=str(mlflow_raw.get("experiment_name", "musubi-tuning")),
+        run_name_prefix=str(mlflow_raw.get("run_name_prefix", "musubi-tuning")),
+    )
+
+    return TuningConfig(
+        base_scenario=str(base_scenario),
+        search_space=search_space,
+        study=study,
+        constraints=constraints,
+        objective=objective,
+        output=output,
+        mlflow=mlflow,
+        log_level=str(raw.get("log_level", "INFO")),
     )
